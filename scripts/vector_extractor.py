@@ -37,6 +37,13 @@ except ImportError:
     print("Error: Pillow required. Install with: pip install Pillow")
     sys.exit(1)
 
+# Optional: PyMuPDF for improved bbox accuracy
+try:
+    import fitz  # PyMuPDF
+    PYMUPDF_AVAILABLE = True
+except ImportError:
+    PYMUPDF_AVAILABLE = False
+
 
 # =============================================================================
 # TAG PATTERNS - Three tiers for comprehensive detection
@@ -87,15 +94,119 @@ VECTOR_TEXT_THRESHOLD = 100
 # Clustering parameters for multi-line instrument bubbles (vertical clustering)
 CLUSTER_X_TOLERANCE = 20    # Max horizontal distance to consider same cluster
 CLUSTER_Y_GAP_MAX = 15      # Max vertical gap between lines in cluster
+ADAPTIVE_GAP_MULTIPLIER = 1.5  # Font size multiplier for adaptive gap
 
 # Horizontal clustering parameters (for vertically-oriented line numbers)
 HORIZONTAL_CLUSTER_Y_TOLERANCE = 10  # Max vertical distance for horizontal cluster
 HORIZONTAL_CLUSTER_X_GAP_MAX = 30    # Max horizontal gap between elements
 
+# =============================================================================
+# INSTRUMENT PREFIX NORMALIZATION
+# =============================================================================
+
+# ISA instrument prefixes that indicate multi-line tag reconstruction
+# When these prefixes are detected, increase search radius for numeric suffix
+INSTRUMENT_PREFIXES = {
+    # Gauges and indicators
+    'PG', 'TG', 'LG', 'FG',
+    # Transmitters
+    'PT', 'TT', 'LT', 'FT', 'AT', 'WT',
+    'PIT', 'TIT', 'LIT', 'FIT', 'AIT', 'WIT',
+    # Indicators
+    'PI', 'TI', 'LI', 'FI', 'AI', 'WI',
+    # Controllers
+    'PC', 'TC', 'LC', 'FC', 'AC',
+    'PIC', 'TIC', 'LIC', 'FIC', 'AIC',
+    # Switches - High/Low
+    'PSH', 'PSL', 'PSHH', 'PSLL',
+    'TSH', 'TSL', 'TSHH', 'TSLL',
+    'LSH', 'LSL', 'LSHH', 'LSLL',
+    'FSH', 'FSL', 'FSHH', 'FSLL',
+    # Switches - Basic
+    'PS', 'TS', 'LS', 'FS', 'AS',
+    # Alarms
+    'PAH', 'PAL', 'PAHH', 'PALL',
+    'TAH', 'TAL', 'TAHH', 'TALL',
+    'LAH', 'LAL', 'LAHH', 'LALL',
+    'FAH', 'FAL', 'FAHH', 'FALL',
+    # Valves
+    'PV', 'TV', 'LV', 'FV', 'AV', 'HV', 'XV',
+    'PCV', 'TCV', 'LCV', 'FCV',
+    # Hand/Manual
+    'HIC', 'HS', 'HC',
+    # Position/Miscellaneous
+    'ZS', 'ZT', 'ZI', 'ZIC',
+    # Speed
+    'SS', 'ST', 'SI', 'SIC',
+}
+
 
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
+
+def is_instrument_prefix(text: str) -> bool:
+    """Check if text is a known instrument prefix."""
+    return text.strip().upper() in INSTRUMENT_PREFIXES
+
+
+def normalize_number_fragment(text: str) -> str:
+    """
+    Normalize numeric fragments that may be OCR artifacts.
+
+    Handles cases like:
+    - "0.8" → "08" (misread zero-eight as decimal)
+    - "0.2" → "02" (misread zero-two as decimal)
+    - ".01" → "01" (leading decimal removed)
+
+    Args:
+        text: Text fragment to normalize
+
+    Returns:
+        Normalized text
+    """
+    text = text.strip()
+
+    # Pattern: 0.N where N is single digit (e.g., "0.8" → "08")
+    if re.match(r'^0\.\d$', text):
+        return text.replace('.', '')
+
+    # Pattern: .NN (leading decimal, e.g., ".01" → "01")
+    if re.match(r'^\.\d{1,2}$', text):
+        return text[1:]
+
+    # Pattern: N.0 (trailing zero after decimal, e.g., "1.0" → "10")
+    # Only if it looks like it could be a two-digit number
+    if re.match(r'^\d\.0$', text):
+        return text.replace('.', '')
+
+    return text
+
+
+def looks_like_loop_number(text: str) -> bool:
+    """
+    Check if text looks like an instrument loop number suffix.
+
+    Loop numbers are typically 1-4 digits, possibly with letter suffix.
+    Examples: 01, 02, 12, 001, 05A
+
+    Args:
+        text: Text to check
+
+    Returns:
+        True if text looks like a loop number
+    """
+    text = text.strip()
+
+    # Normalize potential OCR artifacts first
+    normalized = normalize_number_fragment(text)
+
+    # Pattern: 1-4 digits, optional letter suffix
+    if re.match(r'^\d{1,4}[A-Z]?$', normalized, re.IGNORECASE):
+        return True
+
+    return False
+
 
 def get_default_output_dir(pdf_path: Path) -> Path:
     """
@@ -168,7 +279,8 @@ def classify_tag_pattern(text: str) -> tuple[bool, str]:
 def cluster_text_elements(
     text_elements: list[dict],
     x_tolerance: float = CLUSTER_X_TOLERANCE,
-    y_gap_max: float = CLUSTER_Y_GAP_MAX
+    y_gap_max: float = CLUSTER_Y_GAP_MAX,
+    adaptive_gap: bool = True
 ) -> list[dict]:
     """
     Cluster vertically-stacked text elements in instrument bubbles.
@@ -184,6 +296,7 @@ def cluster_text_elements(
         text_elements: List of text elements with bbox coordinates
         x_tolerance: Max horizontal distance to consider same cluster
         y_gap_max: Max vertical gap between lines
+        adaptive_gap: If True, adjust y_gap based on font size and prefix detection
 
     Returns:
         List of reconstructed text elements with fragment provenance
@@ -230,7 +343,24 @@ def cluster_text_elements(
                 curr_top = elem['bbox'][1]     # y0 of current element
                 gap = curr_top - prev_bottom
 
-                if gap <= y_gap_max:
+                # Calculate effective gap threshold
+                effective_gap = y_gap_max
+
+                if adaptive_gap:
+                    # Adaptive gap based on font size
+                    font_size = elem.get('font_size') or 10
+                    effective_gap = max(y_gap_max, font_size * ADAPTIVE_GAP_MULTIPLIER)
+
+                    # Extra tolerance when first element is an instrument prefix
+                    # and current element looks like a loop number
+                    first_text = current_cluster[0]['text'].strip().upper()
+                    curr_text = elem['text'].strip()
+
+                    if is_instrument_prefix(first_text) and looks_like_loop_number(curr_text):
+                        # Increase tolerance significantly for instrument tag reconstruction
+                        effective_gap = max(effective_gap, 25)
+
+                if gap <= effective_gap:
                     # Same cluster - merge
                     current_cluster.append(elem)
                     current_bbox = union_bbox(current_bbox, elem['bbox'])
@@ -258,6 +388,9 @@ def _create_reconstructed_element(cluster: list[dict], merged_bbox: list) -> dic
     Merges text with intelligent hyphen insertion:
     - LETTERS + DIGITS → "PG" + "02" = "PG-02"
     - LETTERS + LETTERS → "MBR" + "TANK" = "MBR-TANK"
+
+    Also applies normalization for common OCR artifacts:
+    - "0.8" → "08" when following instrument prefix
     """
     if len(cluster) == 1:
         # Single element - no reconstruction needed
@@ -270,11 +403,23 @@ def _create_reconstructed_element(cluster: list[dict], merged_bbox: list) -> dic
     sorted_cluster = sorted(cluster, key=lambda e: e['bbox'][1])
     texts = [e['text'] for e in sorted_cluster]
 
+    # Check if first element is an instrument prefix for normalization
+    first_is_prefix = is_instrument_prefix(texts[0]) if texts else False
+
     merged_text = ""
+    normalized_applied = False
+
     for i, text in enumerate(texts):
         if i == 0:
             merged_text = text
         else:
+            # Normalize numeric fragments when following instrument prefix
+            if first_is_prefix and looks_like_loop_number(text):
+                normalized_text = normalize_number_fragment(text)
+                if normalized_text != text:
+                    normalized_applied = True
+                text = normalized_text
+
             prev_char = merged_text[-1] if merged_text else ''
             curr_char = text[0] if text else ''
 
@@ -296,15 +441,30 @@ def _create_reconstructed_element(cluster: list[dict], merged_bbox: list) -> dic
         for e in sorted_cluster
     ]
 
-    return {
+    # Calculate merge_confidence based on reconstruction quality indicators
+    merge_confidence = 0.5  # Base confidence for any cluster
+    if first_is_prefix:
+        merge_confidence += 0.3  # Bonus for known instrument prefix
+    if len(texts) == 2 and looks_like_loop_number(texts[1]):
+        merge_confidence += 0.2  # Bonus for prefix + loop number pattern
+    merge_confidence = min(merge_confidence, 1.0)
+
+    result = {
         'text': merged_text,
         'bbox': merged_bbox,
         'reconstruction_method': 'clustered',
+        'merge_confidence': round(merge_confidence, 2),
         'fragments': fragments,
         'page': sorted_cluster[0].get('page'),
         'font_size': sorted_cluster[0].get('font_size'),
         'font_name': sorted_cluster[0].get('font_name'),
     }
+
+    # Track if normalization was applied
+    if normalized_applied:
+        result['normalization_applied'] = True
+
+    return result
 
 
 def cluster_horizontal_elements(
@@ -527,6 +687,120 @@ def extract_text_labels(page, page_num: int, enable_clustering: bool = True) -> 
     return labels
 
 
+def extract_text_labels_pymupdf(
+    pdf_path: Path,
+    page_num: int,
+    enable_clustering: bool = True
+) -> list[dict]:
+    """
+    Extract text labels using PyMuPDF for improved bbox accuracy.
+
+    PyMuPDF often provides more accurate bounding boxes than pdfplumber,
+    especially for text in rotated or complex layouts.
+
+    Args:
+        pdf_path: Path to PDF file
+        page_num: 1-indexed page number
+        enable_clustering: If True, cluster vertically-adjacent text
+
+    Returns:
+        List of text label dictionaries with bbox coordinates and pattern tier
+    """
+    if not PYMUPDF_AVAILABLE:
+        raise ImportError("PyMuPDF not available. Install with: pip install pymupdf")
+
+    doc = fitz.open(str(pdf_path))
+    try:
+        # PyMuPDF uses 0-indexed pages
+        page = doc[page_num - 1]
+
+        # get_text("words") returns: (x0, y0, x1, y1, word, block_no, line_no, word_no)
+        words = page.get_text("words")
+
+        raw_labels = []
+        for word_data in words:
+            x0, y0, x1, y1, text, block_no, line_no, word_no = word_data
+            text = text.strip()
+            if not text:
+                continue
+
+            raw_labels.append({
+                "text": text,
+                "bbox": [
+                    round(x0, 2),
+                    round(y0, 2),
+                    round(x1, 2),
+                    round(y1, 2)
+                ],
+                "page": page_num,
+                "font_size": None,  # PyMuPDF get_text("words") doesn't include font size
+                "font_name": None,
+                "extraction_backend": "pymupdf",
+                "block_no": block_no,
+                "line_no": line_no,
+            })
+
+        # Apply clustering to reconstruct multi-line tags
+        if enable_clustering:
+            labels = cluster_text_elements(raw_labels)
+            labels = cluster_horizontal_elements(labels)
+        else:
+            labels = []
+            for label in raw_labels:
+                label['reconstruction_method'] = 'single_text'
+                label['fragments'] = None
+                labels.append(label)
+
+        # Classify each label against tag patterns
+        for label in labels:
+            text = label['text']
+            is_candidate, pattern_tier = classify_tag_pattern(text)
+            label['is_tag_candidate'] = is_candidate
+            label['pattern_tier'] = pattern_tier
+            label['extraction_source'] = 'vector'
+
+        return labels
+
+    finally:
+        doc.close()
+
+
+def extract_text_with_fallback(
+    page,
+    page_num: int,
+    pdf_path: Optional[Path] = None,
+    prefer_pymupdf: bool = False,
+    enable_clustering: bool = True
+) -> tuple[list[dict], str]:
+    """
+    Extract text labels with optional fallback between pdfplumber and PyMuPDF.
+
+    Args:
+        page: pdfplumber page object
+        page_num: 1-indexed page number
+        pdf_path: Path to PDF (required for PyMuPDF extraction)
+        prefer_pymupdf: If True and available, use PyMuPDF as primary
+        enable_clustering: If True, cluster vertically-adjacent text
+
+    Returns:
+        Tuple of (labels, backend_used) where backend_used is 'pdfplumber' or 'pymupdf'
+    """
+    # Primary extraction
+    if prefer_pymupdf and PYMUPDF_AVAILABLE and pdf_path:
+        try:
+            labels = extract_text_labels_pymupdf(pdf_path, page_num, enable_clustering)
+            return labels, 'pymupdf'
+        except Exception as e:
+            print(f"PyMuPDF extraction failed for page {page_num}: {e}", file=sys.stderr)
+            # Fall back to pdfplumber
+            labels = extract_text_labels(page, page_num, enable_clustering)
+            return labels, 'pdfplumber'
+    else:
+        # Use pdfplumber as primary
+        labels = extract_text_labels(page, page_num, enable_clustering)
+        return labels, 'pdfplumber'
+
+
 def render_page_image(page, output_path: Path, resolution: int = 150) -> Path:
     """
     Render PDF page as image for VLM processing.
@@ -544,7 +818,13 @@ def render_page_image(page, output_path: Path, resolution: int = 150) -> Path:
     return output_path
 
 
-def extract_page(page, page_num: int, output_dir: Path) -> dict:
+def extract_page(
+    page,
+    page_num: int,
+    output_dir: Path,
+    pdf_path: Optional[Path] = None,
+    prefer_pymupdf: bool = False
+) -> dict:
     """
     Extract all data from a single PDF page.
 
@@ -552,15 +832,21 @@ def extract_page(page, page_num: int, output_dir: Path) -> dict:
         page: pdfplumber page object
         page_num: 1-indexed page number
         output_dir: Directory for output files
+        pdf_path: Path to PDF (required for PyMuPDF extraction)
+        prefer_pymupdf: If True and available, use PyMuPDF for text extraction
 
     Returns:
         Dictionary with page extraction results including:
         - tag_candidates: All detected tags with pattern tier
         - candidates_by_tier: Breakdown by pattern tier (isa_strict, isa_like, etc.)
         - reconstructed_count: Tags that were clustered from multi-line text
+        - extraction_backend: Which backend was used ('pdfplumber' or 'pymupdf')
     """
     pdf_type = classify_pdf_type(page)
-    text_labels = extract_text_labels(page, page_num, enable_clustering=True)
+    text_labels, backend_used = extract_text_with_fallback(
+        page, page_num, pdf_path=pdf_path,
+        prefer_pymupdf=prefer_pymupdf, enable_clustering=True
+    )
 
     # Separate tag candidates from other text
     tag_candidates = [l for l in text_labels if l["is_tag_candidate"]]
@@ -589,6 +875,7 @@ def extract_page(page, page_num: int, output_dir: Path) -> dict:
     return {
         "page": page_num,
         "pdf_type": pdf_type,
+        "extraction_backend": backend_used,
         "dimensions": {
             "width": round(page.width, 2),
             "height": round(page.height, 2),
@@ -606,7 +893,8 @@ def extract_page(page, page_num: int, output_dir: Path) -> dict:
 def extract_pdf(
     pdf_path: Path,
     output_dir: Path,
-    pages: Optional[list[int]] = None
+    pages: Optional[list[int]] = None,
+    prefer_pymupdf: bool = False
 ) -> dict:
     """
     Extract text and images from PDF P&ID.
@@ -615,6 +903,7 @@ def extract_pdf(
         pdf_path: Path to input PDF
         output_dir: Directory for output files
         pages: Optional list of page numbers (1-indexed), or None for all
+        prefer_pymupdf: If True and available, use PyMuPDF for text extraction
 
     Returns:
         Dictionary with extraction results including:
@@ -653,7 +942,10 @@ def extract_pdf(
             if pages and page_num not in pages:
                 continue
 
-            page_result = extract_page(page, page_num, output_dir)
+            page_result = extract_page(
+                page, page_num, output_dir,
+                pdf_path=pdf_path, prefer_pymupdf=prefer_pymupdf
+            )
             results["pages"].append(page_result)
 
             # Update summary
@@ -698,6 +990,11 @@ def main():
         action="store_true",
         help="Disable multi-line tag clustering"
     )
+    parser.add_argument(
+        "--prefer-pymupdf",
+        action="store_true",
+        help="Use PyMuPDF for text extraction (better bbox accuracy, requires pymupdf)"
+    )
     args = parser.parse_args()
 
     if not args.pdf_path.exists():
@@ -716,7 +1013,10 @@ def main():
         pages = [int(p.strip()) for p in args.pages.split(",")]
 
     # Extract
-    results = extract_pdf(args.pdf_path, output_dir, pages)
+    results = extract_pdf(
+        args.pdf_path, output_dir, pages,
+        prefer_pymupdf=args.prefer_pymupdf
+    )
 
     # Save results
     output_json = output_dir / "extraction_results.json"

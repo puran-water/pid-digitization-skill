@@ -57,6 +57,7 @@ PDF P&ID (multi-page)
         ▼
 ┌─────────────────────────────────────────────────┐
 │ Stage 3: Validation (validate_extraction.py)    │
+│ - Page coverage check (warns if incomplete)     │
 │ - Computed confidence scoring                   │
 │ - Duplicate detection and flagging              │
 │ - Required field validation by device class     │
@@ -83,7 +84,7 @@ Create skill-local venv (one-time):
 ```bash
 cd ~/skills/pid-digitization-skill
 python3 -m venv .venv
-.venv/bin/pip install pdfplumber pillow pyyaml jsonschema
+.venv/bin/pip install pdfplumber pillow pyyaml jsonschema pymupdf
 ```
 
 Gemini CLI must be installed separately:
@@ -108,15 +109,36 @@ Output (auto-derived from PDF path):
 
 ### 2. Claude Classification (Agent Executes)
 
-Read the page images and classify extracted candidates:
+**CRITICAL: Claude MUST classify ALL P&ID pages, not just a sample.**
+
+Skipping pages results in Gemini flagging those items as MISSING, which floods the review queue with false positives. For a 23-page P&ID, Claude must read and classify all 23 pages.
+
+**Systematic page-by-page workflow:**
+
+1. Get page count from extraction_results.json
+2. For EACH page (skip only title/legend pages 1-3):
+   - Read the page image
+   - Get tag_candidates from extraction_results.json for that page
+   - Classify all equipment, instruments, valves, and lines
+   - Add to classifications_claude.json
+3. Verify coverage: every P&ID page should have classifications
 
 ```
-Look at the attached P&ID page image.
-Classify these tag candidates from extraction_results.json.
-Follow templates/vlm-classification-prompt.md.
-Output JSON array with canonical_tag suggestions.
-Save to classifications_claude.json.
+For each P&ID page image (page_004.png through page_NNN.png):
+1. Read the page image
+2. Classify tag candidates from extraction_results.json for this page
+3. Discover additional items (lines, valves) visible in the image
+4. Follow templates/vlm-classification-prompt.md
+5. Append to classifications_claude.json with page number
+
+Output JSON structure:
+{
+  "classifications": [...],      // All classified equipment/instruments
+  "discovered_items": [...]      // Lines, valves, missed items
+}
 ```
+
+**Coverage validation:** Before running Gemini review, verify that classifications_claude.json has entries for all P&ID pages. Missing pages will result in inflated review queues.
 
 ### 3. Gemini Review (Automated or Manual)
 
@@ -168,22 +190,30 @@ Output:
 - `instrument-database.yaml` - Instrument database with loops
 - `line-list.yaml` - Piping line list (if lines detected)
 - `valve-schedule.yaml` - Valve schedule (control valves, on/off valves)
-- `validation-report.yaml` - Summary statistics
+- `validation-report.yaml` - Summary statistics (includes page coverage)
 - `review-queue.yaml` - VLM-discovered items needing human QA
 
 Items with `review_required: true` need human verification.
+
+**Page Coverage Check:** The validation step checks that all P&ID pages have classifications. If pages are missing, a warning is printed and included in validation-report.yaml. Configure `skip_pages` in project_config.yaml to exclude title/legend pages from this check.
 
 ## Project Configuration
 
 Copy `project_config_template.yaml` to your output folder and customize:
 
 ```yaml
-project_id: "KALOL-250-KLD-ZLD"
+project_id: "EXAMPLE-WTP-001"
 
 # Force abbreviations to equipment (not instrument)
 equipment_abbreviations:
   - SM   # Static Mixer (not Speed Monitor)
   - EJ   # Ejector (not Expansion Joint)
+
+# Pages to skip from coverage validation (title pages, legends)
+skip_pages:
+  - 1    # Title page
+  - 2    # Table of contents
+  - 3    # Legend/symbol key
 
 # Context-based disambiguation
 context_rules:
@@ -242,7 +272,7 @@ These tags require context checking:
 ### equipment-list.yaml
 
 ```yaml
-project_id: "KALOL-250-KLD-ZLD"
+project_id: "EXAMPLE-WTP-001"
 equipment:
   - tag: "200-P-01"
     description: "Permeate Pump"
@@ -261,7 +291,7 @@ equipment:
 ### instrument-database.yaml
 
 ```yaml
-project_id: "KALOL-250-KLD-ZLD"
+project_id: "EXAMPLE-WTP-001"
 revision:
   number: "A"
   date: "2026-01-05"
@@ -301,7 +331,7 @@ instruments:
 Piping lines extracted from P&ID (per `line-list.schema.yaml`):
 
 ```yaml
-project_id: "KALOL-250-KLD-ZLD"
+project_id: "EXAMPLE-WTP-001"
 lines:
   - line_number: "2-PW-001-A1"
     size_nominal: "2\""
@@ -322,7 +352,7 @@ lines:
 Valve schedule extracted from instruments with 'V' function (per `valve-schedule.schema.yaml`):
 
 ```yaml
-project_id: "KALOL-250-KLD-ZLD"
+project_id: "EXAMPLE-WTP-001"
 valves:
   - valve_tag: "200-FV-01"
     valve_type: "Control"

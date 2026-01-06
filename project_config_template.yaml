@@ -132,7 +132,7 @@ area_mapping:
 # Corrections from QA review - these override VLM classifications
 
 manual_overrides:
-  # Example corrections based on Kalol P&ID review:
+  # Example corrections based on P&ID review:
   - original_tag: "TS-01"
     correction:
       tag_type: "instrument"
@@ -176,6 +176,19 @@ additional_tag_patterns:
     examples: ["LIT-01", "PG-12", "FV-05A"]
 
 # ============================================
+# PAGE COVERAGE SETTINGS
+# ============================================
+# Pages to skip from coverage validation (title pages, legends, etc.)
+# These pages will not trigger "missing classification" warnings
+
+skip_pages:
+  # Common non-P&ID pages to exclude:
+  # - 1    # Title page
+  # - 2    # Table of contents
+  # - 3    # Legend/symbol key
+  # Add page numbers that contain no process equipment
+
+# ============================================
 # VALIDATION SETTINGS
 # ============================================
 
@@ -197,3 +210,9 @@ validation:
     bbox_evidence: true       # Require bbox or extraction evidence
     required_fields: true     # Check device-class required fields
     cross_reference: true     # equipment_tag must exist in equipment list
+    tag_existence: true       # Validate VLM tags against vector text extraction
+
+  # Tag existence validation settings (correlation between VLM and vector text)
+  tag_existence:
+    fuzzy_threshold: 0.85     # Minimum similarity for fuzzy matching (0-1)
+    reject_not_found: false   # If true, reject tags not found in vector text

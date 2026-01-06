@@ -25,6 +25,7 @@ Usage:
 """
 
 import argparse
+import difflib
 import json
 import re
 import sys
@@ -56,6 +57,7 @@ VALIDATION_CONFIG = {
             'isa_compliant_tag': 0.10,    # Matches canonical ISA format
             'context_validated': 0.10,    # Nearby context matched rules (plan: +0.10)
             'gemini_verified': 0.10,      # Gemini reviewed and agreed
+            'tag_existence_validated': 0.15,  # Tag found in vector text extraction
         },
         'penalties': {
             'vlm_disagree': -0.20,        # Gemini corrected Claude
@@ -63,6 +65,7 @@ VALIDATION_CONFIG = {
             'abbreviation_ambiguous': -0.10,  # TS, SM, EJ ambiguous
             'missing_required_field': -0.10,  # Per missing field (plan: -0.10)
             'duplicate_tag': -0.10,       # Tag appears multiple times
+            'tag_not_in_vector': -0.10,   # VLM-only tag (no vector text corroboration)
         }
     },
 
@@ -89,6 +92,13 @@ VALIDATION_CONFIG = {
         'required_fields': True,      # Check device-class required fields
         'cross_reference': True,      # equipment_tag must exist
         'isa_format': True,           # Tag must match ISA pattern
+        'tag_existence': True,        # Validate tags exist in vector text
+    },
+
+    # Tag existence validation settings
+    'tag_existence': {
+        'fuzzy_threshold': 0.85,      # Minimum similarity for fuzzy matching
+        'reject_not_found': False,    # If True, reject tags not in vector text
     }
 }
 
@@ -376,6 +386,70 @@ def detect_duplicates(entities: list) -> dict[str, list]:
 
     # Return only duplicates
     return {tag: locs for tag, locs in tag_occurrences.items() if len(locs) > 1}
+
+
+def check_page_coverage(
+    extraction_results: dict,
+    classifications: list,
+    skip_pages: Optional[set] = None
+) -> dict:
+    """
+    Check if all P&ID pages have classifications.
+
+    This ensures Claude reviewed ALL pages, not just a sample.
+    Pages without classifications result in Gemini flagging items as MISSING,
+    which inflates the review queue with false positives.
+
+    Args:
+        extraction_results: Contains 'pages' array from vector extraction
+        classifications: List of classifications (from Claude)
+        skip_pages: Set of page numbers to skip (title pages, legends, etc.)
+
+    Returns:
+        {
+            'total_pages': int,
+            'classified_pages': set,
+            'missing_pages': set,
+            'coverage_percent': float,
+            'is_complete': bool
+        }
+    """
+    skip_pages = skip_pages or set()
+
+    # Get all pages from extraction results
+    all_pages = set()
+    for page_data in extraction_results.get('pages', []):
+        page_num = page_data.get('page', 0)
+        if page_num and page_num not in skip_pages:
+            all_pages.add(page_num)
+
+    # Get pages that have classifications
+    classified_pages = set()
+    for c in classifications:
+        page = c.get('page')
+        if page:
+            classified_pages.add(page)
+
+    # Also check discovered_items if present
+    for d in extraction_results.get('discovered_items', []):
+        page = d.get('page')
+        if page:
+            classified_pages.add(page)
+
+    # Calculate missing pages
+    missing_pages = all_pages - classified_pages
+
+    # Calculate coverage
+    total_pages = len(all_pages)
+    coverage_percent = (len(classified_pages) / total_pages * 100) if total_pages > 0 else 0
+
+    return {
+        'total_pages': total_pages,
+        'classified_pages': classified_pages,
+        'missing_pages': missing_pages,
+        'coverage_percent': round(coverage_percent, 1),
+        'is_complete': len(missing_pages) == 0
+    }
 
 
 def determine_device_role(functions: list[str]) -> str:
@@ -735,6 +809,182 @@ def check_ambiguous_abbreviation(tag: str, context_text: Optional[str] = None) -
     return True, None
 
 
+# =============================================================================
+# TAG EXISTENCE VALIDATION (Vector Text Correlation)
+# =============================================================================
+
+def build_vector_tag_set(extraction_results: dict) -> set[str]:
+    """
+    Build a set of all tags found in vector text extraction.
+
+    This set is used to check if VLM-identified tags have corresponding
+    vector text evidence. Tags not in vector text may be:
+    - Rendered as graphics (instrument bubbles drawn as shapes)
+    - In raster/image overlays within the PDF
+    - Missed by vector extraction due to font encoding
+    - Using different formatting than the VLM read
+
+    Tags are normalized to uppercase for matching.
+
+    Args:
+        extraction_results: Output from vector_extractor.py or merged_results.json
+
+    Returns:
+        Set of normalized tag strings from vector extraction
+    """
+    vector_tags = set()
+
+    # Extract from pages (vector extraction output)
+    for page_data in extraction_results.get('pages', []):
+        for candidate in page_data.get('tag_candidates', []):
+            text = candidate.get('text', '').strip().upper()
+            if text:
+                vector_tags.add(text)
+
+        # Also include other_text in case tags were mis-classified
+        for other in page_data.get('other_text', []):
+            text = other.get('text', '').strip().upper()
+            if text and len(text) >= 3:  # Minimum tag length
+                vector_tags.add(text)
+
+    # Also check extraction_results if present (from vector extractor)
+    for page_data in extraction_results.get('extraction_results', {}).get('pages', []):
+        for candidate in page_data.get('tag_candidates', []):
+            text = candidate.get('text', '').strip().upper()
+            if text:
+                vector_tags.add(text)
+
+    return vector_tags
+
+
+def validate_tag_exists_in_vector(
+    entity: dict,
+    vector_tags: set[str],
+    fuzzy_threshold: float = 0.85
+) -> tuple[bool, Optional[str], float]:
+    """
+    Check if a VLM-identified tag has corresponding vector text evidence.
+
+    Tags with vector text correlation have higher confidence since they're
+    confirmed by two independent sources (VLM + vector extraction).
+
+    Tags without vector text may still be valid - they could be rendered
+    as graphics rather than searchable text in the PDF.
+
+    Args:
+        entity: Entity dict containing 'tag' or 'original_tag'
+        vector_tags: Set of tags from vector text extraction
+        fuzzy_threshold: Minimum similarity for fuzzy matching (0-1)
+
+    Returns:
+        (exists, matched_tag, similarity) tuple:
+        - exists: True if tag found (exact or fuzzy)
+        - matched_tag: The matching tag from vector text (if fuzzy matched)
+        - similarity: The similarity score (1.0 for exact match)
+    """
+    tag = entity.get('tag') or entity.get('original_tag', '')
+    if not tag:
+        return False, None, 0.0
+
+    tag_upper = tag.strip().upper()
+
+    # Exact match
+    if tag_upper in vector_tags:
+        return True, tag_upper, 1.0
+
+    # Normalize variations (remove hyphens, spaces for comparison)
+    tag_normalized = re.sub(r'[-\s]', '', tag_upper)
+    for vector_tag in vector_tags:
+        vector_normalized = re.sub(r'[-\s]', '', vector_tag)
+        if tag_normalized == vector_normalized:
+            return True, vector_tag, 0.99  # Near-exact match
+
+    # Fuzzy match for minor OCR/reconstruction differences
+    best_match = None
+    best_similarity = 0.0
+
+    for vector_tag in vector_tags:
+        # Use SequenceMatcher for similarity
+        similarity = difflib.SequenceMatcher(None, tag_upper, vector_tag).ratio()
+        if similarity >= fuzzy_threshold and similarity > best_similarity:
+            best_similarity = similarity
+            best_match = vector_tag
+
+    if best_match:
+        return True, best_match, best_similarity
+
+    return False, None, 0.0
+
+
+def apply_tag_existence_validation(
+    entities: list,
+    vector_tags: set[str],
+    config: dict = VALIDATION_CONFIG
+) -> tuple[list, dict]:
+    """
+    Apply tag existence validation to all entities.
+
+    Args:
+        entities: List of classified entities
+        vector_tags: Set of tags from vector text extraction
+        config: Validation configuration
+
+    Returns:
+        (validated_entities, stats) tuple
+    """
+    tag_config = config.get('tag_existence', {})
+    fuzzy_threshold = tag_config.get('fuzzy_threshold', 0.85)
+    reject_not_found = tag_config.get('reject_not_found', False)
+
+    stats = {
+        'exact_matches': 0,
+        'fuzzy_matches': 0,
+        'not_found': 0,
+        'rejected': 0,
+    }
+
+    validated = []
+
+    for entity in entities:
+        tag = entity.get('tag') or entity.get('original_tag', '')
+        if not tag:
+            validated.append(entity)
+            continue
+
+        exists, matched_tag, similarity = validate_tag_exists_in_vector(
+            entity, vector_tags, fuzzy_threshold
+        )
+
+        if exists:
+            entity['tag_existence_validated'] = True
+            entity['tag_existence_similarity'] = round(similarity, 3)
+
+            if similarity >= 0.99:
+                stats['exact_matches'] += 1
+            else:
+                stats['fuzzy_matches'] += 1
+                # Update tag if fuzzy matched to different string
+                if matched_tag and matched_tag != tag.upper():
+                    entity['tag_vector_match'] = matched_tag
+                    entity['tag_fuzzy_corrected'] = True
+
+            validated.append(entity)
+        else:
+            entity['tag_existence_validated'] = False
+            entity['tag_not_in_vector'] = True
+            stats['not_found'] += 1
+
+            if reject_not_found:
+                # Mark for review (VLM-only identification, no vector corroboration)
+                entity['review_required'] = True
+                entity['review_reason'] = f"Tag '{tag}' identified by VLM only - no vector text evidence"
+                stats['rejected'] += 1
+
+            validated.append(entity)
+
+    return validated, stats
+
+
 def compute_confidence(entity: dict, config: dict = VALIDATION_CONFIG) -> float:
     """
     Compute confidence score for an entity based on evidence and validation.
@@ -795,6 +1045,10 @@ def compute_confidence(entity: dict, config: dict = VALIDATION_CONFIG) -> float:
     if entity.get('context_validated'):
         score += bonuses['context_validated']
 
+    # Tag existence validated bonus - tag found in vector text extraction
+    if entity.get('tag_existence_validated'):
+        score += bonuses.get('tag_existence_validated', 0.15)
+
     # ============================================================
     # PENALTIES
     # ============================================================
@@ -817,6 +1071,10 @@ def compute_confidence(entity: dict, config: dict = VALIDATION_CONFIG) -> float:
     # Duplicate tag penalty
     if entity.get('is_duplicate'):
         score += penalties['duplicate_tag']
+
+    # Tag not in vector text penalty - VLM-only identification (less corroboration)
+    if entity.get('tag_not_in_vector'):
+        score += penalties.get('tag_not_in_vector', -0.30)
 
     # Missing required field penalties (per field)
     missing_fields = entity.get('missing_fields', [])
@@ -1360,6 +1618,16 @@ def build_provenance(entity: dict, page: int, confidence: float) -> dict:
     # Always include extraction_source for downstream processing (per plan)
     provenance['extraction_source'] = extraction_source
 
+    # Include tag existence validation results (hallucination detection)
+    if entity.get('tag_existence_validated') is not None:
+        provenance['tag_existence_validated'] = entity['tag_existence_validated']
+    if entity.get('tag_not_in_vector'):
+        provenance['tag_not_in_vector'] = True
+    if entity.get('tag_existence_similarity'):
+        provenance['tag_existence_similarity'] = entity['tag_existence_similarity']
+    if entity.get('tag_vector_match'):
+        provenance['tag_vector_match'] = entity['tag_vector_match']
+
     return provenance
 
 
@@ -1444,6 +1712,22 @@ def validate_extraction(
         classifications = apply_builtin_ambiguous_patterns(classifications, extraction_results)
         classifications = apply_manual_overrides(classifications, project_config)
 
+        # 5. Tag existence validation (hallucination prevention)
+        # Build vector tag set from extraction results
+        if config['checks'].get('tag_existence', True):
+            vector_tags = build_vector_tag_set(extraction_results)
+            if vector_tags:
+                classifications, tag_existence_stats = apply_tag_existence_validation(
+                    classifications, vector_tags, config
+                )
+                validation['statistics']['tag_existence'] = tag_existence_stats
+                validation['statistics']['vector_tags_count'] = len(vector_tags)
+            else:
+                validation['warnings'].append({
+                    'type': 'no_vector_tags',
+                    'message': 'No vector tags found for existence validation - skipping hallucination check',
+                })
+
         # Count overrides applied
         validation['statistics']['manual_overrides'] = sum(
             1 for c in classifications if c.get('override_applied')
@@ -1457,6 +1741,31 @@ def validate_extraction(
         validation['statistics']['builtin_patterns_applied'] = sum(
             1 for c in classifications if c.get('builtin_pattern_applied')
         )
+
+        # Check page coverage - ensure all P&ID pages were classified
+        # Get skip_pages from project config (title pages, legends, etc.)
+        skip_pages = set(project_config.get('skip_pages', []))
+        coverage = check_page_coverage(extraction_results, classifications, skip_pages)
+
+        validation['statistics']['page_coverage'] = {
+            'total_pages': coverage['total_pages'],
+            'classified_pages': len(coverage['classified_pages']),
+            'missing_pages': sorted(coverage['missing_pages']),
+            'coverage_percent': coverage['coverage_percent'],
+        }
+
+        if not coverage['is_complete']:
+            missing_list = sorted(coverage['missing_pages'])
+            validation['warnings'].append({
+                'type': 'incomplete_page_coverage',
+                'missing_pages': missing_list,
+                'coverage_percent': coverage['coverage_percent'],
+                'message': f"WARNING: {len(missing_list)} pages not classified by Claude. "
+                           f"Pages {missing_list} have no classifications. "
+                           f"This may result in inflated review queue from Gemini MISSING flags.",
+            })
+            print(f"WARNING: Page coverage incomplete ({coverage['coverage_percent']}%)", file=sys.stderr)
+            print(f"  Missing pages: {missing_list}", file=sys.stderr)
 
         # Process classifications directly
         for entity in classifications:
@@ -1989,6 +2298,7 @@ def output_yaml(validation: dict, output_path: Path):
             "consensus_items": validation["statistics"].get("gemini_corrections", 0),
             "review_required_count": validation["statistics"]["review_required"],
             "high_confidence_count": validation["statistics"].get("high_confidence_count", 0),
+            "page_coverage": validation["statistics"].get("page_coverage"),
         },
         "process_areas": sorted(set(
             str(e.get("area", ""))
@@ -2098,6 +2408,34 @@ def main():
             print(f"  Manual overrides: {stats['manual_overrides']}")
         if stats.get('duplicates_found', 0) > 0:
             print(f"  Duplicates: {stats['duplicates_found']}")
+
+        # Tag existence validation info
+        tag_existence = stats.get('tag_existence', {})
+        if tag_existence:
+            exact = tag_existence.get('exact_matches', 0)
+            fuzzy = tag_existence.get('fuzzy_matches', 0)
+            not_found = tag_existence.get('not_found', 0)
+            total_validated = exact + fuzzy + not_found
+            if total_validated > 0:
+                print(f"\n  Tag existence validation:")
+                print(f"    Vector tags available: {stats.get('vector_tags_count', 0)}")
+                print(f"    Exact matches: {exact}")
+                print(f"    Fuzzy matches: {fuzzy}")
+                if not_found > 0:
+                    print(f"    Not in vector text: {not_found} (VLM-only, no vector evidence)")
+
+        # Page coverage info
+        page_coverage = stats.get('page_coverage', {})
+        if page_coverage:
+            coverage_pct = page_coverage.get('coverage_percent', 0)
+            total = page_coverage.get('total_pages', 0)
+            classified = page_coverage.get('classified_pages', 0)
+            missing = page_coverage.get('missing_pages', [])
+            if coverage_pct < 100:
+                print(f"\n⚠️  Page coverage: {classified}/{total} pages ({coverage_pct}%)")
+                print(f"  Missing pages: {missing}")
+            else:
+                print(f"  Page coverage: {classified}/{total} pages (100%)")
 
         if validation["errors"]:
             print(f"\nErrors: {len(validation['errors'])}")
