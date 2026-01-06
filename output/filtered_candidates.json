@@ -1,0 +1,1120 @@
+{
+  "4": [
+    {
+      "text": "VNX-02B",
+      "bbox": [
+        925.8,
+        448.3,
+        963.28,
+        457.29
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "NRV-02A",
+      "bbox": [
+        925.92,
+        516.22,
+        963.9,
+        525.21
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "FIT-01",
+      "bbox": [
+        1137.72,
+        377.62,
+        1151.21,
+        397.65
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "5": [
+    {
+      "text": "BV-25",
+      "bbox": [
+        939.28,
+        757.56,
+        960.08,
+        767.22
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "AG-03",
+      "bbox": [
+        622.56,
+        402.76,
+        643.49,
+        410.0
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "LI-02",
+      "bbox": [
+        805.92,
+        582.64,
+        811.44,
+        595.64
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "6": [
+    {
+      "text": "SCR-02A",
+      "bbox": [
+        648.72,
+        491.87,
+        687.24,
+        501.0
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    }
+  ],
+  "7": [
+    {
+      "text": "AIT-01",
+      "bbox": [
+        466.8,
+        471.96,
+        482.64,
+        494.62
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VNX-13A",
+      "bbox": [
+        1026.0,
+        312.48,
+        1068.43,
+        322.66
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VNX-13A",
+      "bbox": [
+        1026.0,
+        430.32,
+        1068.43,
+        440.5
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "NRV-14B",
+      "bbox": [
+        1089.48,
+        312.48,
+        1132.47,
+        322.66
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "NRV-14B",
+      "bbox": [
+        1089.48,
+        430.32,
+        1132.47,
+        440.5
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    }
+  ],
+  "8": [
+    {
+      "text": "LIT-03",
+      "bbox": [
+        214.44,
+        405.65,
+        234.46,
+        412.57
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-52",
+      "bbox": [
+        831.41,
+        157.32,
+        851.89,
+        166.56
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-52",
+      "bbox": [
+        830.33,
+        824.04,
+        850.21,
+        833.28
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "SM-02",
+      "bbox": [
+        615.48,
+        273.31,
+        638.94,
+        281.27
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "FG-00",
+      "bbox": [
+        865.56,
+        188.93,
+        885.19,
+        195.85
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "FIT-02M",
+      "bbox": [
+        990.6,
+        391.85,
+        1000.99,
+        426.73
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VX-52",
+      "bbox": [
+        695.21,
+        445.44,
+        714.37,
+        454.68
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-52",
+      "bbox": [
+        695.21,
+        497.28,
+        715.81,
+        506.52
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "9": [
+    {
+      "text": "VB-02",
+      "bbox": [
+        187.62,
+        231.74,
+        208.67,
+        241.56
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        771.3,
+        244.46,
+        792.47,
+        254.28
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "AG-00",
+      "bbox": [
+        517.08,
+        388.14,
+        538.36,
+        395.51
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    }
+  ],
+  "10": [
+    {
+      "text": "AG-00",
+      "bbox": [
+        1218.48,
+        334.17,
+        1240.09,
+        341.65
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "AG-00",
+      "bbox": [
+        1218.48,
+        745.29,
+        1240.09,
+        752.77
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        946.89,
+        201.7,
+        968.41,
+        211.68
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        946.89,
+        612.7,
+        968.41,
+        622.68
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "AG-00",
+      "bbox": [
+        575.76,
+        373.05,
+        597.37,
+        380.53
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "AG-00",
+      "bbox": [
+        575.76,
+        784.17,
+        597.37,
+        791.65
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        375.69,
+        209.26,
+        397.09,
+        219.24
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        375.69,
+        620.38,
+        397.09,
+        630.36
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        239.25,
+        209.26,
+        260.65,
+        219.24
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        239.25,
+        620.38,
+        260.65,
+        630.36
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "11": [
+    {
+      "text": "VB-02",
+      "bbox": [
+        195.83,
+        461.38,
+        216.69,
+        471.12
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        856.43,
+        461.38,
+        877.41,
+        471.12
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "12": [
+    {
+      "text": "VB-52",
+      "bbox": [
+        402.21,
+        180.47,
+        423.85,
+        190.44
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "LIT-02",
+      "bbox": [
+        635.28,
+        397.41,
+        646.08,
+        414.13
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "DP-02A",
+      "bbox": [
+        872.88,
+        815.01,
+        899.06,
+        822.49
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "DP-02B",
+      "bbox": [
+        842.52,
+        884.85,
+        868.7,
+        892.33
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    }
+  ],
+  "13": [
+    {
+      "text": "EJ-01",
+      "bbox": [
+        1046.76,
+        661.4,
+        1068.33,
+        669.65
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "EJ-02",
+      "bbox": [
+        1077.72,
+        723.08,
+        1099.29,
+        731.33
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "NRV-80",
+      "bbox": [
+        263.4,
+        419.84,
+        283.58,
+        437.33
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "LIT-02",
+      "bbox": [
+        271.32,
+        738.32,
+        283.25,
+        756.65
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-52",
+      "bbox": [
+        786.2,
+        81.03,
+        810.05,
+        92.04
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "14": [
+    {
+      "text": "SM-01",
+      "bbox": [
+        537.72,
+        284.21,
+        549.15,
+        288.09
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "MT-01",
+      "bbox": [
+        496.68,
+        799.37,
+        507.89,
+        803.25
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "FG-00",
+      "bbox": [
+        182.88,
+        835.13,
+        193.88,
+        839.01
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-04",
+      "bbox": [
+        1170.29,
+        408.94,
+        1183.29,
+        414.12
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "15": [
+    {
+      "text": "VB-52",
+      "bbox": [
+        238.91,
+        383.49,
+        256.72,
+        390.6
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "LS-01",
+      "bbox": [
+        939.36,
+        773.05,
+        947.51,
+        787.88
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "DT-01",
+      "bbox": [
+        1277.52,
+        337.21,
+        1296.04,
+        343.88
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "DT-01",
+      "bbox": [
+        1277.52,
+        896.17,
+        1296.04,
+        902.84
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "DP-01B",
+      "bbox": [
+        1131.36,
+        298.57,
+        1154.7,
+        305.24
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "DP-01B",
+      "bbox": [
+        1131.36,
+        857.65,
+        1154.7,
+        864.32
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    }
+  ],
+  "16": [
+    {
+      "text": "DT-01",
+      "bbox": [
+        913.8,
+        966.0,
+        932.36,
+        972.68
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "DP-01B",
+      "bbox": [
+        767.16,
+        927.24,
+        790.55,
+        933.92
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-05",
+      "bbox": [
+        403.06,
+        304.39,
+        420.88,
+        311.52
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-05",
+      "bbox": [
+        403.06,
+        332.95,
+        420.88,
+        340.08
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "LS-01",
+      "bbox": [
+        1170.36,
+        493.8,
+        1178.53,
+        508.64
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "17": [
+    {
+      "text": "DT-01",
+      "bbox": [
+        791.88,
+        903.32,
+        810.57,
+        910.05
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "DP-01B",
+      "bbox": [
+        644.28,
+        864.32,
+        667.83,
+        871.05
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "DP-01A",
+      "bbox": [
+        528.96,
+        864.32,
+        552.51,
+        871.05
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-05",
+      "bbox": [
+        403.87,
+        295.1,
+        421.73,
+        302.28
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-05",
+      "bbox": [
+        403.87,
+        322.82,
+        421.73,
+        330.0
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "LS-01",
+      "bbox": [
+        1041.12,
+        484.76,
+        1049.35,
+        499.77
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "LS-01",
+      "bbox": [
+        306.84,
+        546.08,
+        315.07,
+        561.09
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "18": [
+    {
+      "text": "VB-05",
+      "bbox": [
+        916.81,
+        310.29,
+        937.26,
+        319.8
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-52",
+      "bbox": [
+        481.21,
+        806.25,
+        501.66,
+        815.76
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "19": [
+    {
+      "text": "TIT-01",
+      "bbox": [
+        715.8,
+        764.06,
+        727.16,
+        780.87
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "LS-01",
+      "bbox": [
+        1330.08,
+        754.46,
+        1339.34,
+        771.27
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-52",
+      "bbox": [
+        512.9,
+        786.1,
+        534.51,
+        796.2
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "20": [
+    {
+      "text": "VB-02",
+      "bbox": [
+        600.86,
+        719.51,
+        621.17,
+        729.0
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        740.18,
+        877.55,
+        759.77,
+        887.04
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-52",
+      "bbox": [
+        781.46,
+        331.07,
+        801.05,
+        340.56
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "AG-00",
+      "bbox": [
+        797.28,
+        422.78,
+        817.84,
+        429.89
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        319.58,
+        230.99,
+        340.01,
+        240.48
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "21": [
+    {
+      "text": "VB-02",
+      "bbox": [
+        830.05,
+        419.88,
+        857.97,
+        433.44
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "AG-00",
+      "bbox": [
+        974.88,
+        870.61,
+        1004.26,
+        880.77
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        694.57,
+        693.84,
+        723.69,
+        707.4
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        800.29,
+        915.36,
+        828.33,
+        928.92
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "22": [
+    {
+      "text": "VB-04",
+      "bbox": [
+        241.28,
+        220.93,
+        261.79,
+        230.52
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "AG-00",
+      "bbox": [
+        523.08,
+        352.28,
+        543.86,
+        359.47
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        368.84,
+        601.93,
+        389.47,
+        611.52
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "AG-00",
+      "bbox": [
+        686.76,
+        742.16,
+        707.54,
+        749.35
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "AG-00",
+      "bbox": [
+        1240.32,
+        572.72,
+        1261.1,
+        579.91
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        991.52,
+        602.05,
+        1011.31,
+        611.64
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    }
+  ],
+  "23": [
+    {
+      "text": "VB-51",
+      "bbox": [
+        1075.85,
+        475.57,
+        1100.35,
+        487.44
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        781.73,
+        719.41,
+        807.19,
+        731.28
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        711.89,
+        950.53,
+        736.39,
+        962.4
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "DP-01B",
+      "bbox": [
+        447.84,
+        442.85,
+        478.99,
+        451.75
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-51",
+      "bbox": [
+        654.05,
+        348.37,
+        678.55,
+        360.24
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "DT-01",
+      "bbox": [
+        643.08,
+        494.45,
+        667.8,
+        503.35
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "DP-01A",
+      "bbox": [
+        873.6,
+        442.85,
+        904.75,
+        451.75
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-02",
+      "bbox": [
+        619.37,
+        719.41,
+        644.83,
+        731.28
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "AG-00",
+      "bbox": [
+        1019.64,
+        914.21,
+        1045.35,
+        923.11
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    },
+    {
+      "text": "VB-51",
+      "bbox": [
+        344.93,
+        475.57,
+        369.43,
+        487.44
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "VB-51",
+      "bbox": [
+        1232.33,
+        348.37,
+        1256.83,
+        360.24
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "clustered"
+    },
+    {
+      "text": "DT-01",
+      "bbox": [
+        1221.36,
+        494.45,
+        1246.08,
+        503.35
+      ],
+      "nearby_text": "",
+      "reconstruction_method": "single_text"
+    }
+  ]
+}

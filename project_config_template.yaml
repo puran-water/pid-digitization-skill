@@ -1,0 +1,199 @@
+# P&ID Digitization Project Configuration Template
+# Copy this to your output folder as project_config.yaml and customize
+#
+# This file provides project-specific overrides for:
+# - Abbreviation disambiguation (SM = Static Mixer vs Speed Monitor)
+# - Context-based tag interpretation (TS near "TRQ" = Torque Switch)
+# - Area prefix mapping for non-standard tags
+# - Manual corrections from QA review
+
+$schema: "../schemas/project-config.schema.yaml"
+version: "1.0.0"
+
+# Project identification
+project_id: "EXAMPLE-PROJECT-ID"
+project_name: "Example Plant P&ID Digitization"
+client: "Example Client"
+
+# ============================================
+# ABBREVIATION DISAMBIGUATION
+# ============================================
+
+# Force these abbreviations to be interpreted as equipment (not instruments)
+# Common conflicts:
+#   SM: Static Mixer (equipment) vs Speed Monitor (instrument)
+#   EJ: Ejector (equipment) vs Expansion Joint (interpretation)
+#   SS: Soft Starter vs Speed Switch
+equipment_abbreviations:
+  - SM    # Static Mixer - NOT Speed Monitor (ISA S first letter)
+  - EJ    # Ejector/Eductor - NOT Expansion Joint
+  # Add project-specific equipment abbreviations here
+
+# Force these to be interpreted as instruments even if they look like equipment tags
+instrument_abbreviations: []
+  # Add project-specific instrument abbreviations here
+
+# ============================================
+# CONTEXT-BASED DISAMBIGUATION RULES
+# ============================================
+# When a tag pattern is ambiguous, check for nearby text to disambiguate
+
+context_rules:
+  # TS: Temperature Switch vs Torque Switch
+  - pattern: "^TS-\\d+$"
+    context_check:
+      nearby_text: ["TRQ", "TORQUE", "N.m", "N-m", "Nm", "N·m"]
+      search_radius_px: 100  # Search within 100px of tag bbox
+    if_found:
+      tag_type: "instrument"
+      instrument_type: "Torque Switch"
+      variable: "M"  # User-defined/Miscellaneous per ISA
+      review_note: "Context-disambiguated from Temperature Switch"
+    else:
+      tag_type: "instrument"
+      instrument_type: "Temperature Switch"
+      variable: "T"
+
+  # PS: Pressure Switch vs Position Switch
+  - pattern: "^PS-\\d+$"
+    context_check:
+      nearby_text: ["PRESS", "PSI", "BAR", "KPA", "PSIG", "BARG"]
+      search_radius_px: 100
+    if_found:
+      tag_type: "instrument"
+      instrument_type: "Pressure Switch"
+      variable: "P"
+    else:
+      tag_type: "instrument"
+      instrument_type: "Position Switch"
+      variable: "Z"
+      review_note: "Assumed Position Switch - verify context"
+
+  # LS: Level Switch vs Limit Switch
+  - pattern: "^LS-\\d+$"
+    context_check:
+      nearby_text: ["LEVEL", "TANK", "SUMP", "WELL"]
+      search_radius_px: 150
+    if_found:
+      tag_type: "instrument"
+      instrument_type: "Level Switch"
+      variable: "L"
+    else:
+      # Check for limit switch context
+      context_check:
+        nearby_text: ["LIMIT", "POSITION", "TRAVEL", "STROKE"]
+      if_found:
+        tag_type: "instrument"
+        instrument_type: "Limit Switch"
+        variable: "Z"
+      else:
+        tag_type: "instrument"
+        instrument_type: "Level Switch"
+        variable: "L"
+        review_note: "Assumed Level Switch - verify context"
+
+# ============================================
+# AREA MAPPING
+# ============================================
+# For tags without area prefix, assign area based on sheet or equipment context
+
+area_mapping:
+  # Default area for unmapped tags
+  default: 100
+
+  # Assign area by sheet/page number range
+  # Format: "start-end": area_code
+  by_sheet:
+    "1-4": 100      # Example: OLD_PLANT
+    "5-12": 200     # Example: NEW_PLANT
+    "13-18": 300    # Example: CHEMICAL_DOSING
+
+  # Assign area by equipment tag prefix patterns
+  # If a tag starts with one of these, assign that area
+  by_equipment_prefix:
+    "EQ-": 100
+    "MBR-": 200
+    "RO-": 200
+    "UF-": 200
+    "NAOH-": 300
+    "FECL3-": 300
+    "NAOCL-": 300
+    "POLY-": 300
+
+  # Named process areas (for documentation)
+  process_areas:
+    100: "OLD_PLANT"
+    200: "NEW_PLANT"
+    300: "CHEMICAL_DOSING"
+
+# ============================================
+# MANUAL OVERRIDES
+# ============================================
+# Corrections from QA review - these override VLM classifications
+
+manual_overrides:
+  # Example corrections based on Kalol P&ID review:
+  - original_tag: "TS-01"
+    correction:
+      tag_type: "instrument"
+      instrument_type: "Torque Switch"
+      variable: "M"
+      service_description: "Clarifier Bridge Torque"
+      review_required: false
+      override_reason: "QA review: P&ID shows 'TRQ' annotation"
+
+  # - original_tag: "SM-02"
+  #   correction:
+  #     tag_type: "equipment"
+  #     equipment_type: "Static Mixer"
+  #     equipment_code: "AG"  # Canonical code from equipment_designators.yaml
+  #     description: "Chemical injection mixer"
+  #     override_reason: "SM = Static Mixer in this project"
+
+  # - original_tag: "EJ-01"
+  #   correction:
+  #     tag_type: "equipment"
+  #     equipment_type: "Ejector"
+  #     equipment_code: "EJ"
+  #     description: "Acid Dosing Ejector"
+  #     override_reason: "EJ = Ejector in chemical dosing context"
+
+# ============================================
+# TAG PATTERN EXTENSIONS
+# ============================================
+# Additional patterns to recognize as potential tags
+# These supplement the standard ISA patterns
+
+additional_tag_patterns:
+  # Descriptive equipment tags without area prefix
+  - pattern: "^[A-Z][A-Z0-9\\-]{3,25}$"
+    type: "descriptive_equipment"
+    examples: ["FINE-BAR-SCREEN", "EQ-TANK", "MBR-BLOWER"]
+
+  # Partial ISA tags (missing area)
+  - pattern: "^[A-Z]{2,5}-\\d{1,4}[A-Z]?$"
+    type: "partial_isa"
+    examples: ["LIT-01", "PG-12", "FV-05A"]
+
+# ============================================
+# VALIDATION SETTINGS
+# ============================================
+
+validation:
+  # Minimum confidence to not flag as review_required
+  confidence_threshold: 0.80
+
+  # Required fields by device class (flag if missing)
+  required_fields:
+    transmitter: ["signal_type", "range"]
+    switch: ["setpoint_type"]  # H, L, HH, LL
+    gauge: []  # No required fields
+    control_valve: ["fail_position", "actuator_type"]
+    on_off_valve: ["fail_position"]
+
+  # Enable/disable specific validation checks
+  checks:
+    uniqueness: true          # Flag duplicate tags
+    bbox_evidence: true       # Require bbox or extraction evidence
+    required_fields: true     # Check device-class required fields
+    cross_reference: true     # equipment_tag must exist in equipment list
